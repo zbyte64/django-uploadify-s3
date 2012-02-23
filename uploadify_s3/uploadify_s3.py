@@ -13,22 +13,24 @@ UPLOADIFY_OPTIONS = ('auto', 'buttonImg', 'buttonText', 'cancelImg', 'checkScrip
 UPLOADIFY_METHODS = ('onAllComplete', 'onCancel', 'onCheck', 'onClearQueue', 'onComplete', 'onError', 'onInit', 'onOpen', 'onProgress', 'onQueueFull', 'onSelect', 'onSelectOnce', 'onSWFReady')
 
 PASS_THRU_OPTIONS = ('folder', 'fileExt',)
-FILTERED_KEYS  = ('filename',)
+FILTERED_KEYS  = []#('filename',)
 EXCLUDED_KEYS     = ('AWSAccessKeyId', 'policy', 'signature')
 
 # AWS Options
 ACCESS_KEY_ID       = getattr(settings, 'AWS_ACCESS_KEY_ID', None)
 SECRET_ACCESS_KEY   = getattr(settings, 'AWS_SECRET_ACCESS_KEY', None)
 BUCKET_NAME         = getattr(settings, 'AWS_BUCKET_NAME', None)
-SECURE_URLS         = getattr(settings, 'AWS_S3_SECURE_URLS', True)
-BUCKET_URL          = getattr(settings, 'AWS_BUCKET_URL', 'http://' if SECURE_URLS else 'https://' + BUCKET_NAME + '.s3.amazonaws.com')
-DEFAULT_ACL         = getattr(settings, 'AWS_DEFAULT_ACL', 'private')
+SECURE_URLS         = getattr(settings, 'AWS_S3_SECURE_URLS', False)
+BUCKET_URL          = getattr(settings, 'AWS_BUCKET_URL', ('https://' if SECURE_URLS else 'http://') + BUCKET_NAME + '.s3.amazonaws.com')
+DEFAULT_ACL         = getattr(settings, 'AWS_DEFAULT_ACL', 'public')
 DEFAULT_KEY_PATTERN = getattr(settings, 'AWS_DEFAULT_KEY_PATTERN', '${filename}')
 DEFAULT_FORM_TIME   = getattr(settings, 'AWS_DEFAULT_FORM_LIFETIME', 36000) # 10 HOURS
 
+BUTTON_TEXT = 'Select File'
+
 # Defaults for required Uploadify options
-DEFAULT_CANCELIMG = settings.MEDIA_URL + "uploadify/cancel.png"
-DEFAULT_UPLOADER  = settings.MEDIA_URL + "uploadify/uploadify.swf"
+DEFAULT_CANCELIMG = settings.STATIC_URL + "uploadify/uploadify-cancel.png"
+DEFAULT_UPLOADER  = settings.STATIC_URL + "uploadify/uploadify.swf"
 
 class UploadifyS3(object):
     """Uploadify for Amazon S3"""
@@ -40,13 +42,15 @@ class UploadifyS3(object):
         if any(True for key in self.options if key not in UPLOADIFY_OPTIONS + UPLOADIFY_METHODS):
             raise ImproperlyConfigured("Attempted to initialize with unrecognized option '%s'." % key)
 
-        _set_default_if_none(self.options, 'cancelImg', DEFAULT_CANCELIMG)
-        _set_default_if_none(self.options, 'uploader', DEFAULT_UPLOADER)
-        _set_default_if_none(self.options, 'script', BUCKET_URL)
+        _set_default_if_none(self.options, 'cancelImage', DEFAULT_CANCELIMG)
+        _set_default_if_none(self.options, 'swf', DEFAULT_UPLOADER)
+        _set_default_if_none(self.options, 'uploader', BUCKET_URL)
+        _set_default_if_none(self.options, 'buttonText', BUTTON_TEXT)
+        _set_default_if_none(self.options, 'checkExisting', False)
 
         self.post_data = post_data
 
-        _set_default_if_none(self.post_data, 'key', _uri_encode(DEFAULT_KEY_PATTERN))
+        _set_default_if_none(self.post_data, 'key', DEFAULT_KEY_PATTERN)
         _set_default_if_none(self.post_data, 'acl', DEFAULT_ACL)
         
         try:
@@ -55,7 +59,7 @@ class UploadifyS3(object):
             raise ImproperlyConfigured("Bucket name is a required property.")
  
         try:
-            _set_default_if_none(self.post_data, 'AWSAccessKeyId', _uri_encode(ACCESS_KEY_ID))
+            _set_default_if_none(self.post_data, 'AWSAccessKeyId', ACCESS_KEY_ID)
         except ValueError:
             raise ImproperlyConfigured("AWS Access Key ID is a required property.")
 
@@ -66,13 +70,12 @@ class UploadifyS3(object):
         
         expiration_time = datetime.utcnow() + timedelta(seconds=DEFAULT_FORM_TIME)
         self.policy_string = build_post_policy(expiration_time, self.conditions)
-        
         self.policy = base64.b64encode(self.policy_string)
          
         self.signature = base64.encodestring(hmac.new(SECRET_ACCESS_KEY, self.policy, hashlib.sha1).digest()).strip()
         
         self.post_data['policy'] = self.policy
-        self.post_data['signature'] = _uri_encode(self.signature)
+        self.post_data['signature'] = self.signature
         self.options['scriptData'] = self.post_data
         # self.options['policyDebug'] = self.policy_string
         
@@ -148,9 +151,8 @@ def _uri_encode(str):
 
 def _set_default_if_none(dict, key, default=None):
     if key not in dict:
-        if default:
+        if default is not None:
             dict[key] = default
         else:
             raise ValueError
 
-    

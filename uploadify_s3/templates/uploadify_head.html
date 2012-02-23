@@ -1,3 +1,11 @@
-<link href="{{ MEDIA_URL }}uploadify/uploadify.css" type="text/css" rel="stylesheet" />
-<script type="text/javascript" src="{{ MEDIA_URL }}uploadify/swfobject.js"></script>
-<script type="text/javascript" src="{{ MEDIA_URL }}uploadify/jquery.uploadify.v2.1.4.min.js"></script>
+<script type="text/javascript">
+var jQuery = django.jQuery; //uploadify will not work otherwise
+</script>
+<link href="{{STATIC_URL}}uploadify/uploadify.css" type="text/css" rel="stylesheet" />
+<script type="text/javascript" src="{{STATIC_URL}}uploadify/jquery.uploadify.js"></script>
+<script type="text/javascript" src="{{STATIC_URL}}uploadify/widget.js"></script>
+<script type="text/javascript">
+(function($) {
+    make_file_fields_dynamic($, "{% url uploadify-options %}")
+})(django.jQuery);
+</script>
