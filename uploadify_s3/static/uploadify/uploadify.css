@@ -31,6 +31,12 @@ THE SOFTWARE.
 	padding: 8px 0;
 	text-align: center;
 	width: 100%;
+	/* for the django admin */
+	position: absolute;
+}
+.uploadify {
+	/* for the django admin */
+	margin-left: 120px;
 }
 .uploadify:hover .uploadifyButton {
 	background-color: #808080;

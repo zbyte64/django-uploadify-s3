@@ -1,6 +1,6 @@
 function make_file_fields_dynamic($, options_url) {
     $.getJSON(options_url, function(data) {
-        $('form:has(.uploadify)').each(function() {
+        $('form:has(.uploadifyinput)').each(function() {
             var form = $(this);
             var options = data;
             
@@ -76,7 +76,7 @@ function make_file_fields_dynamic($, options_url) {
             options['multi'] = false;
             options['removeCompleted'] = false;
             options['uploadLimit'] = 1;
-            var fields = form.find('.uploadify');
+            var fields = form.find('.uploadifyinput');
             fields.uploadify(options);
         });
     });

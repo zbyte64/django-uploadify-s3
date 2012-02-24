@@ -16,7 +16,7 @@ class UploadifyFileInput(FileInput):
     
     def render(self, name, value, attrs=None):
         attrs = attrs or {}
-        attrs['class'] = 'uploadify'
+        attrs['class'] = 'uploadifyinput'
         return super(UploadifyFileInput, self).render(name, value, attrs)
 
 class UploadifyClearableFileInput(ClearableFileInput):
@@ -34,6 +34,6 @@ class UploadifyClearableFileInput(ClearableFileInput):
     
     def render(self, name, value, attrs=None):
         attrs = attrs or {}
-        attrs['class'] = 'uploadify'
+        attrs['class'] = 'uploadifyinput'
         return super(UploadifyClearableFileInput, self).render(name, value, attrs)
 
