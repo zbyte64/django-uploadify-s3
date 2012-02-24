@@ -22,6 +22,7 @@ class UploadifyFileInput(FileInput):
     
     def render(self, name, value, attrs=None):
         attrs = attrs or {}
+        #TODO attrs['data-upload-to']
         attrs['class'] = 'uploadifyinput'
         return super(UploadifyFileInput, self).render(name, value, attrs)
 

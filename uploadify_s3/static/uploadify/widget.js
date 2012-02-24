@@ -5,9 +5,7 @@ function make_file_fields_dynamic($, options_url) {
             var options = data;
             
             function init_form() {
-                console.log('init plz')
                 if (form.data('uploadify_init')) {
-                    console.log('aready init')
                     return
                 }
                 form.data('pending_uploads', {})
@@ -27,13 +25,6 @@ function make_file_fields_dynamic($, options_url) {
                     return false;
                 });
                 form.data('uploadify_init', true);
-                console.log('init_form')
-            }
-            
-            function on_all_complete(status) {
-                //$('#'+this.id).data('path', name)
-                
-                console.log(['on_all_complete', this, status, form.data('pending_uploads')])
             }
             
             function on_complete(file, queue) {
@@ -42,10 +33,6 @@ function make_file_fields_dynamic($, options_url) {
                 if ($.isEmptyObject(form.data('pending_uploads')) && form.data('submit')) {
                     form.submit();
                 }
-                console.log([this, file, queue, form.data('pending_uploads')])
-                
-                //event.name
-                
             }
             
             function on_select() {
@@ -53,19 +40,16 @@ function make_file_fields_dynamic($, options_url) {
                     init_form()
                 }
                 form.data('pending_uploads')[this.id] = true;
-                console.log('on_select', form.data('pending_uploads'))
             }
             
             function on_upload_error(file,errorCode,errorMsg,errorString, queue) {
                 delete form.data('pending_uploads')[this.id];
-                console.log(['error', errorCode, errorMsg, errorString])
             }
             
             function on_upload_cancel() {
                 delete form.data('pending_uploads')[this.id];
             }
             
-            options['onQueueComplete'] = on_all_complete;
             options['onUploadComplete'] = on_complete;
             options['onSelect'] = on_select;
             options['onUploadError'] = on_upload_error;

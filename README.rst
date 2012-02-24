@@ -14,19 +14,7 @@ jQuery plugin.
 DUS3 is configuration driven, meaning you don't need to add any 
 Uploadify or S3-specific code to your project to use these tools. 
 
-For a working demo application based on DUS3, please visit:
-https://github.com/sbc/django-uploadify-s3-example 
-
-Requirements
-------------
-
-Download the Uploadify ZIP file and unzip it in your project. This
-application assumes the files will be located in an ``uploadify`` 
-directory within your MEDIA_URL directory.
-
-Note that Uploadify requires jQuery, and django-uploadify-s3 does not
-automatically include it. (To avoid conflicts.) You will need to 
-include jQuery in your base template, or on the uploadify upload page.
+This fork aims to integrate uploadify with the django admin.
 
 Background
 ----------
@@ -49,46 +37,11 @@ Installation & Use
 2. Add any desired project-wide settings to your ``settings.py``
    or equivalent. See Settings below.
 
-3. Create a view and a template for your file upload page.
+3. Add ``uploadify_s3.urls`` to your urlpatterns
 
-4. Call::
+4. Use the ``widgets.UploadifyFileInput`` in your form
 
-     uploadify_s3.UploadifyS3().get_options_json() 
-
-   to generate the Uploadify configuration options and make this context
-   available to your template.
-   
-   ``UploadifyS3()`` takes three optional parameters:
-   
-   - ``uploadify_options``: A dictionary of Uploadify options.
-   - ``post_data``: A dictionary of POST variables that is used to
-     set the Uploadify scriptData option and eventually sent to AWS.
-   - ``conditions``: See conditions, below.
-      
-   These parameters are optional because DUS3 can in many cases pull
-   all of its configuration data from your settings.py. The parameters
-   override any values found in your settings file.
-   
-5. Load the DUS3 template tags and insert them in your template.
-
-   Add this above any of the other tags to load the tag set::
-      {% load uploadify_tags %}
-
-   Add this in your ``<head>`` to include the Uploadify jQuery, CSS and
-   SWF files::
-      {% uploadify_head %}
-   
-   Add this in your ``<body>`` to include the Uploadify file upload 
-   widget. Initially this will appear as a "Select Files" button;
-   when files are added the queue and progress bars will be 
-   displayed. The ``uploadify_options`` parameter is the options 
-   string you created in your view::
-      {% uploadify_widget uploadify_options %}
-      
-   Add this to your ``<body>`` to insert an Upload link/button. It takes a
-   string parameter that allows you to add custom CSS classes::
-      {% uploadify_upload "extra css classes" %}
-
+5. Use the {% uploadify_head %} tag to load in the uploadify code in the template hosting your form
 
 Settings
 --------
