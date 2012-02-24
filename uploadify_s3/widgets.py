@@ -1,50 +1,55 @@
 from django.forms.widgets import FileInput, ClearableFileInput
 from django.core.files.storage import default_storage
 
-from django.db.models.fields.files import FieldFile, FileField
+from django.db.models.fields.files import FileField
 
-class UploadifyFileInput(FileInput):
+class UploadifyInputMixin(object):
     class Media: #this does not work for the admin as django ignores it [WTF]
         css = ('uploadify/uploadify.css',)
         js = ('uploadify/jquery.uploadify.js', 'uploadify/widget.js')
+    
+    def get_file_field(self):
+        #TODO allow constructor to receive db file field
+        return FileField(upload_to='', storage=default_storage)
     
     def value_from_datadict(self, data, files, name):
         "File widgets take data from FILES, not POST"
         if name in data:
             file_path = data[name]
-            #TODO we need to know the storage engine of the file field
-            file_obj = default_storage.open(file_path)
-            file_copy = FieldFile(None, FileField(upload_to='', storage=default_storage), file_path)
+            file_field = self.get_file_field()
+            file_obj = file_field.storage.open(file_path)
+            file_copy = file_field.attr_class(None, file_field, file_path)
             file_copy.file = file_obj
             file_copy._committed = True
             return file_copy
+        return None
+    
+    def prepare_attrs(self, attrs):
+        attrs = attrs or {}
+        file_field = self.get_file_field()
+        attrs['class'] = 'uploadifyinput'
+        attrs['data-upload-to'] = file_field.upload_to
+        return attrs
+
+class UploadifyFileInput(UploadifyInputMixin, FileInput):
+    def value_from_datadict(self, data, files, name):
+        file_obj = UploadifyInputMixin.value_from_datadict(self, data, files, name)
+        if file_obj:
+            return file_obj
         return super(UploadifyFileInput, self).value_from_datadict(data, files, name)
     
     def render(self, name, value, attrs=None):
-        attrs = attrs or {}
-        #TODO attrs['data-upload-to']
-        attrs['class'] = 'uploadifyinput'
+        attrs = self.prepare_attrs(attrs)
         return super(UploadifyFileInput, self).render(name, value, attrs)
 
-class UploadifyClearableFileInput(ClearableFileInput):
-    class Media: #this does not work for the admin as django ignores it [WTF]
-        css = ('uploadify/uploadify.css',)
-        js = ('uploadify/jquery.uploadify.js', 'uploadify/widget.js')
-    
+class UploadifyClearableFileInput(UploadifyInputMixin, ClearableFileInput):
     def value_from_datadict(self, data, files, name):
-        "File widgets take data from FILES, not POST"
-        if name in data:
-            file_path = data[name]
-            #TODO we need to know the storage engine of the file field
-            file_obj = default_storage.open(file_path)
-            file_copy = FieldFile(None, FileField(upload_to='', storage=default_storage), file_path)
-            file_copy.file = file_obj
-            file_copy._committed = True
-            return file_copy
+        file_obj = UploadifyInputMixin.value_from_datadict(self, data, files, name)
+        if file_obj:
+            return file_obj
         return super(UploadifyClearableFileInput, self).value_from_datadict(data, files, name)
     
     def render(self, name, value, attrs=None):
-        attrs = attrs or {}
-        attrs['class'] = 'uploadifyinput'
+        attrs = self.prepare_attrs(attrs)
         return super(UploadifyClearableFileInput, self).render(name, value, attrs)
 
