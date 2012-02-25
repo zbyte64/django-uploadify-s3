@@ -7,6 +7,7 @@ import base64
 import hmac
 import hashlib
 import json
+import os
 
 UPLOADIFY_OPTIONS = ('auto', 'buttonImg', 'buttonText', 'cancelImg', 'checkScript', 'displayData', 'expressInstall', 'fileDataName', 'fileDesc', 'fileExt', 'folder', 'height', 'hideButton', 'method', 'multi', 'queueID', 'queueSizeLimit', 'removeCompleted', 'rollover', 'script','scriptAccess', 'scriptData', 'simUploadLimit', 'sizeLimit', 'uploader', 'width', 'wmode')
 
@@ -50,7 +51,11 @@ class UploadifyS3(object):
 
         self.post_data = post_data
 
-        _set_default_if_none(self.post_data, 'key', DEFAULT_KEY_PATTERN)
+        if 'folder' in self.options:
+            key = os.path.join(self.options['folder'], DEFAULT_KEY_PATTERN)
+        else:
+            key = DEFAULT_KEY_PATTERN
+        _set_default_if_none(self.post_data, 'key', key)
         _set_default_if_none(self.post_data, 'acl', DEFAULT_ACL)
         
         try:

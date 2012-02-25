@@ -4,12 +4,15 @@ from django.core.files.storage import default_storage
 from django.db.models.fields.files import FileField
 
 class UploadifyInputMixin(object):
+    db_field = None
+    
     class Media: #this does not work for the admin as django ignores it [WTF]
         css = ('uploadify/uploadify.css',)
         js = ('uploadify/jquery.uploadify.js', 'uploadify/widget.js')
     
     def get_file_field(self):
-        #TODO allow constructor to receive db file field
+        if self.db_field:
+            return self.db_field
         return FileField(upload_to='', storage=default_storage)
     
     def value_from_datadict(self, data, files, name):
@@ -32,6 +35,10 @@ class UploadifyInputMixin(object):
         return attrs
 
 class UploadifyFileInput(UploadifyInputMixin, FileInput):
+    def __init__(self, *args, **kwargs):
+        self.db_field = kwargs.pop('db_field', None)
+        FileInput.__init__(self, *args, **kwargs)
+    
     def value_from_datadict(self, data, files, name):
         file_obj = UploadifyInputMixin.value_from_datadict(self, data, files, name)
         if file_obj:
@@ -43,6 +50,10 @@ class UploadifyFileInput(UploadifyInputMixin, FileInput):
         return super(UploadifyFileInput, self).render(name, value, attrs)
 
 class UploadifyClearableFileInput(UploadifyInputMixin, ClearableFileInput):
+    def __init__(self, *args, **kwargs):
+        self.db_field = kwargs.pop('db_field', None)
+        ClearableFileInput.__init__(self, *args, **kwargs)
+    
     def value_from_datadict(self, data, files, name):
         file_obj = UploadifyInputMixin.value_from_datadict(self, data, files, name)
         if file_obj:

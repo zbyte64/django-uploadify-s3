@@ -1,7 +1,13 @@
 function make_file_fields_dynamic($, options_url) {
-    $.getJSON(options_url, function(data) {
-        $('form:has(.uploadifyinput)').each(function() {
-            var form = $(this);
+    $('.uploadifyinput').each(function() {
+        var $this = $(this)
+        var form = $this.parents('form');
+        var upload_to = $this.attr('data-upload-to');
+        if (upload_to.substr(-1) != '/') {
+            upload_to += '/';
+        }
+        //TODO if upload_to has already been seen, don't hit the wire
+        $.getJSON(options_url, {'upload_to': upload_to}, function(data) {
             var options = data;
             
             function init_form() {
@@ -29,10 +35,11 @@ function make_file_fields_dynamic($, options_url) {
             
             function on_complete(file, queue) {
                 delete form.data('pending_uploads')[this.id];
-                $('#'+this.id).data('path', file.name)
+                $('#'+this.id).data('path', upload_to + file.name)
                 if ($.isEmptyObject(form.data('pending_uploads')) && form.data('submit')) {
                     form.submit();
                 }
+                console.log([file, queue])
             }
             
             function on_select() {
@@ -60,8 +67,7 @@ function make_file_fields_dynamic($, options_url) {
             options['multi'] = false;
             options['removeCompleted'] = false;
             options['uploadLimit'] = 1;
-            var fields = form.find('.uploadifyinput');
-            fields.uploadify(options);
+            $this.uploadify(options);
         });
     });
 }

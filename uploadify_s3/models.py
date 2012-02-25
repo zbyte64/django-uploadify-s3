@@ -8,6 +8,4 @@ def patch_admin():
     FORMFIELD_FOR_DBFIELD_DEFAULTS[models.FileField] = {'widget': UploadifyClearableFileInput}
 
 patch_admin()
-#TODO make an admin mixin instead. This is needed as the widget needs to know about the storage engine and the upload_to
-
 
