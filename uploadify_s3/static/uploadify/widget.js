@@ -35,7 +35,11 @@ function make_file_fields_dynamic($, options_url) {
             
             function on_upload_success(file, data, response) {
                 delete form.data('pending_uploads')[this.id];
-                $('#'+this.id).data('path', data); //store the actuall path
+                if (data) {
+                    $('#'+this.id).data('path', data); //store the actuall path
+                } else {
+                    $('#'+this.id).data('path', upload_to + file.name);
+                }
                 if ($.isEmptyObject(form.data('pending_uploads')) && form.data('submit')) {
                     form.submit();
                 }
@@ -50,7 +54,6 @@ function make_file_fields_dynamic($, options_url) {
             
             function on_upload_error(file,errorCode,errorMsg,errorString, queue) {
                 delete form.data('pending_uploads')[this.id];
-                console.log([file, errorCode, errorMsg, errorString, queue])
             }
             
             function on_upload_cancel() {
@@ -67,7 +70,6 @@ function make_file_fields_dynamic($, options_url) {
             options['multi'] = false;
             options['removeCompleted'] = false;
             options['uploadLimit'] = 1;
-            console.log(options)
             $this.uploadify(options);
         });
     });

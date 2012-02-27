@@ -8,11 +8,7 @@ import hmac
 import hashlib
 import os
 
-from base import BaseUploadifyBackend, _set_default_if_none
-
-PASS_THRU_OPTIONS = ('folder', 'fileExt',)
-FILTERED_KEYS  = []#('filename',)
-EXCLUDED_KEYS     = ('AWSAccessKeyId', 'policy', 'signature')
+from base import BaseUploadifyBackend, _set_default_if_none, json
 
 # AWS Options
 ACCESS_KEY_ID       = getattr(settings, 'AWS_ACCESS_KEY_ID', None)
@@ -20,7 +16,7 @@ SECRET_ACCESS_KEY   = getattr(settings, 'AWS_SECRET_ACCESS_KEY', None)
 BUCKET_NAME         = getattr(settings, 'AWS_BUCKET_NAME', None)
 SECURE_URLS         = getattr(settings, 'AWS_S3_SECURE_URLS', False)
 BUCKET_URL          = getattr(settings, 'AWS_BUCKET_URL', ('https://' if SECURE_URLS else 'http://') + BUCKET_NAME + '.s3.amazonaws.com')
-DEFAULT_ACL         = getattr(settings, 'AWS_DEFAULT_ACL', 'public')
+DEFAULT_ACL         = getattr(settings, 'AWS_DEFAULT_ACL', 'public-read')
 DEFAULT_KEY_PATTERN = getattr(settings, 'AWS_DEFAULT_KEY_PATTERN', '${filename}')
 DEFAULT_FORM_TIME   = getattr(settings, 'AWS_DEFAULT_FORM_LIFETIME', 36000) # 10 HOURS
 
@@ -36,6 +32,8 @@ class S3UploadifyBackend(BaseUploadifyBackend):
         return BUCKET_URL
     
     def build_post_data(self):
+        self.options['fileObjName'] = 'file' #S3 requires this be the field name
+        
         if 'folder' in self.options:
             key = os.path.join(self.options['folder'], DEFAULT_KEY_PATTERN)
         else:
@@ -53,68 +51,39 @@ class S3UploadifyBackend(BaseUploadifyBackend):
         except ValueError:
             raise ImproperlyConfigured("AWS Access Key ID is a required property.")
 
-        self.conditions = build_conditions(self.options, self.post_data, self.conditions)
+        self.conditions = self.build_conditions()
 
         if not SECRET_ACCESS_KEY:
             raise ImproperlyConfigured("AWS Secret Access Key is a required property.")
         
         expiration_time = datetime.utcnow() + timedelta(seconds=DEFAULT_FORM_TIME)
-        self.policy_string = build_post_policy(expiration_time, self.conditions)
+        self.policy_string = self.build_post_policy(expiration_time)
         self.policy = base64.b64encode(self.policy_string)
          
         self.signature = base64.encodestring(hmac.new(SECRET_ACCESS_KEY, self.policy, hashlib.sha1).digest()).strip()
         
         self.post_data['policy'] = self.policy
         self.post_data['signature'] = self.signature
+    
+    def build_conditions(self):
+        conditions = list()
+        
+        #make s3 happy with uploadify
+        #conditions.append(['starts-with', '$folder', '']) #no longer passed by uploadify
+        conditions.append(['starts-with', '$filename', ''])
+        #conditions.append({'success_action_status': '200'})
+        
+        #real conditions
+        conditions.append(['starts-with', '$key', self.options['folder']])
+        conditions.append({'bucket': self.post_data['bucket']})
+        conditions.append({'acl': self.post_data['acl']})
+        return conditions
+    
+    def build_post_policy(self, expiration_time):
+        policy = {'expiration': expiration_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                  'conditions': self.conditions,}
+        return json.dumps(policy)
 
-
-def build_conditions(options, post_data, conditions):
-    # PASS_THRU_OPTIONS are Uploadify options that if set in the settings are 
-    # passed into the POST. As a result, a default policy condition is created here.
-    for opt in PASS_THRU_OPTIONS:
-        if opt in options and opt not in conditions:
-            conditions[opt] = None
-
-    # FILTERED_KEYS are those created by Uploadify and passed into the POST on submit.
-    # As a result, a default policy condition is created here.
-    for opt in FILTERED_KEYS:
-        if opt not in conditions:
-            conditions[opt] = None
-
-    conds = post_data.copy()
-    conds.update(conditions)
-
-    # EXCLUDED_KEYS are those that are set by UploadifyS3 but need to be stripped out
-    # for the purposes of creating conditions.
-    for key in EXCLUDED_KEYS:
-        if key in conds:
-            del conds[key]
-
-    return conds
-
-def build_post_policy(expiration_time, conditions):
-    """ Function to build S3 POST policy. Adapted from Programming Amazon Web Services, Murty, pg 104-105. """
-    conds = []
-    for name, test in conditions.iteritems():
-        if test is None:
-            # A None condition value means allow anything.
-            conds.append('["starts-with", "$%s", ""]' % name)
-        elif isinstance(test,str) or isinstance(test, unicode):
-            conds.append('{"%s": "%s" }' % (name, test))
-        elif isinstance(test,list):
-            conds.append('{"%s": "%s" }' % (name, ','.join(test)))
-        elif isinstance(test, dict):
-            operation = test['op']
-            value = test['value']
-            conds.append('["%s", "$%s", "%s"]' % (operation, name, value))
-        elif isinstance(test,slice):
-            conds.append('["%s", "%s", "%s"]' %(name, test.start, test.stop))
-        else:
-            raise TypeError("Unexpected value type for condition '%s': %s" % (name, type(test)))
-
-    return '{"expiration": "%s", "conditions": [%s]}' \
-            % (expiration_time.strftime("%Y-%m-%dT%H:%M:%SZ"), ', '.join(conds))
-            
 def _uri_encode(str):
     try:
         # The Uploadify flash component apparently decodes the scriptData once, so we need to encode twice here.
