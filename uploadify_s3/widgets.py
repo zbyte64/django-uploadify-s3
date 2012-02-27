@@ -1,14 +1,17 @@
 from django.forms.widgets import FileInput, ClearableFileInput
 from django.core.files.storage import default_storage
-
 from django.db.models.fields.files import FileField
+from django.conf import settings
 
 class UploadifyInputMixin(object):
     db_field = None
     
     class Media: #this does not work for the admin as django ignores it [WTF]
-        css = ('uploadify/uploadify.css',)
-        js = ('uploadify/jquery.uploadify.js', 'uploadify/widget.js')
+        css = {'all': ('uploadify/uploadify.css',)}
+        if settings.DEBUG:
+            js = ('uploadify/jquery.uploadify.js', 'uploadify/widget.js')
+        else:
+            js = ('uploadify/jquery.uploadify.min.js', 'uploadify/widget.js')
     
     def get_file_field(self):
         if self.db_field:

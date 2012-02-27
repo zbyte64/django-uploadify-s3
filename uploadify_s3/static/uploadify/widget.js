@@ -1,6 +1,6 @@
 function make_file_fields_dynamic($, options_url) {
     $('.uploadifyinput').each(function() {
-        var $this = $(this)
+        var $this = $(this);
         var form = $this.parents('form');
         var upload_to = $this.attr('data-upload-to');
         if (upload_to.substr(-1) != '/') {
@@ -14,7 +14,7 @@ function make_file_fields_dynamic($, options_url) {
                 if (form.data('uploadify_init')) {
                     return
                 }
-                form.data('pending_uploads', {})
+                form.data('pending_uploads', {});
                 form.data('submit', false);
                 form.submit(function() {
                     if ($.isEmptyObject(form.data('pending_uploads'))) {
@@ -33,13 +33,12 @@ function make_file_fields_dynamic($, options_url) {
                 form.data('uploadify_init', true);
             }
             
-            function on_complete(file, queue) {
+            function on_upload_success(file, data, response) {
                 delete form.data('pending_uploads')[this.id];
-                $('#'+this.id).data('path', upload_to + file.name)
+                $('#'+this.id).data('path', data); //store the actuall path
                 if ($.isEmptyObject(form.data('pending_uploads')) && form.data('submit')) {
                     form.submit();
                 }
-                console.log([file, queue])
             }
             
             function on_select() {
@@ -51,13 +50,14 @@ function make_file_fields_dynamic($, options_url) {
             
             function on_upload_error(file,errorCode,errorMsg,errorString, queue) {
                 delete form.data('pending_uploads')[this.id];
+                console.log([file, errorCode, errorMsg, errorString, queue])
             }
             
             function on_upload_cancel() {
                 delete form.data('pending_uploads')[this.id];
             }
             
-            options['onUploadComplete'] = on_complete;
+            options['onUploadSuccess'] = on_upload_success;
             options['onSelect'] = on_select;
             options['onUploadError'] = on_upload_error;
             options['onUploadCancel'] = on_upload_cancel;
@@ -67,6 +67,7 @@ function make_file_fields_dynamic($, options_url) {
             options['multi'] = false;
             options['removeCompleted'] = false;
             options['uploadLimit'] = 1;
+            console.log(options)
             $this.uploadify(options);
         });
     });

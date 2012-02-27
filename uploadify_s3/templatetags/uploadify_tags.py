@@ -1,5 +1,4 @@
 from django import template
-from django.conf import settings
 from django.db import models
 
 import copy
@@ -15,7 +14,7 @@ from uploadify_s3.widgets import UploadifyClearableFileInput
 @register.inclusion_tag('uploadify/templatetags/head.html')
 def uploadify_head():
     return {
-        'STATIC_URL': settings.STATIC_URL, 
+        'media': UploadifyClearableFileInput().media,
     }
 
 class RenderUploadifyField(InclusionTag):

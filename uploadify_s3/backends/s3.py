@@ -6,12 +6,9 @@ from datetime import timedelta
 import base64
 import hmac
 import hashlib
-import json
 import os
 
-UPLOADIFY_OPTIONS = ('auto', 'buttonImg', 'buttonText', 'cancelImg', 'checkScript', 'displayData', 'expressInstall', 'fileDataName', 'fileDesc', 'fileExt', 'folder', 'height', 'hideButton', 'method', 'multi', 'queueID', 'queueSizeLimit', 'removeCompleted', 'rollover', 'script','scriptAccess', 'scriptData', 'simUploadLimit', 'sizeLimit', 'uploader', 'width', 'wmode')
-
-UPLOADIFY_METHODS = ('onAllComplete', 'onCancel', 'onCheck', 'onClearQueue', 'onComplete', 'onError', 'onInit', 'onOpen', 'onProgress', 'onQueueFull', 'onSelect', 'onSelectOnce', 'onSWFReady')
+from base import BaseUploadifyBackend, _set_default_if_none
 
 PASS_THRU_OPTIONS = ('folder', 'fileExt',)
 FILTERED_KEYS  = []#('filename',)
@@ -27,30 +24,18 @@ DEFAULT_ACL         = getattr(settings, 'AWS_DEFAULT_ACL', 'public')
 DEFAULT_KEY_PATTERN = getattr(settings, 'AWS_DEFAULT_KEY_PATTERN', '${filename}')
 DEFAULT_FORM_TIME   = getattr(settings, 'AWS_DEFAULT_FORM_LIFETIME', 36000) # 10 HOURS
 
-BUTTON_TEXT = 'Select File'
 
-# Defaults for required Uploadify options
-DEFAULT_CANCELIMG = settings.STATIC_URL + "uploadify/uploadify-cancel.png"
-DEFAULT_UPLOADER  = settings.STATIC_URL + "uploadify/uploadify.swf"
-
-class UploadifyS3(object):
+class S3UploadifyBackend(BaseUploadifyBackend):
     """Uploadify for Amazon S3"""
     
-    def __init__(self, uploadify_options={}, post_data={}, conditions={}):
-        self.options = getattr(settings, 'UPLOADIFY_DEFAULT_OPTIONS', {})
-        self.options.update(uploadify_options)
-        
-        if any(True for key in self.options if key not in UPLOADIFY_OPTIONS + UPLOADIFY_METHODS):
-            raise ImproperlyConfigured("Attempted to initialize with unrecognized option '%s'." % key)
-
-        _set_default_if_none(self.options, 'cancelImage', DEFAULT_CANCELIMG)
-        _set_default_if_none(self.options, 'swf', DEFAULT_UPLOADER)
-        _set_default_if_none(self.options, 'uploader', BUCKET_URL)
-        _set_default_if_none(self.options, 'buttonText', BUTTON_TEXT)
-        _set_default_if_none(self.options, 'checkExisting', False)
-
-        self.post_data = post_data
-
+    def __init__(self, request, uploadify_options={}, post_data={}, conditions={}):
+        self.conditions = conditions
+        super(S3UploadifyBackend, self).__init__(request, uploadify_options, post_data)
+    
+    def get_uploader(self):
+        return BUCKET_URL
+    
+    def build_post_data(self):
         if 'folder' in self.options:
             key = os.path.join(self.options['folder'], DEFAULT_KEY_PATTERN)
         else:
@@ -68,7 +53,7 @@ class UploadifyS3(object):
         except ValueError:
             raise ImproperlyConfigured("AWS Access Key ID is a required property.")
 
-        self.conditions = build_conditions(self.options, self.post_data, conditions)
+        self.conditions = build_conditions(self.options, self.post_data, self.conditions)
 
         if not SECRET_ACCESS_KEY:
             raise ImproperlyConfigured("AWS Secret Access Key is a required property.")
@@ -81,24 +66,7 @@ class UploadifyS3(object):
         
         self.post_data['policy'] = self.policy
         self.post_data['signature'] = self.signature
-        self.options['scriptData'] = self.post_data
-        # self.options['policyDebug'] = self.policy_string
-        
-    def get_options_json(self):
-        # return json.dumps(self.options)
-        
-        subs = []
-        for key in self.options:
-            if key in UPLOADIFY_METHODS:
-                subs.append(('"%%%s%%"' % key, self.options[key]))
-                self.options[key] = "%%%s%%" % key
-                
-        out = json.dumps(self.options)
-        
-        for search, replace in subs:
-            out = out.replace(search, replace)
-            
-        return out
+
 
 def build_conditions(options, post_data, conditions):
     # PASS_THRU_OPTIONS are Uploadify options that if set in the settings are 
@@ -153,11 +121,4 @@ def _uri_encode(str):
         return quote_plus(quote_plus(str, safe='~'), safe='~')
     except:
         raise ValueError
-
-def _set_default_if_none(dict, key, default=None):
-    if key not in dict:
-        if default is not None:
-            dict[key] = default
-        else:
-            raise ValueError
 
