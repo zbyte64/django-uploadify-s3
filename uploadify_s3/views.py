@@ -21,11 +21,7 @@ def uploadify_options_view(request):
 
 @csrf_exempt
 def upload_file(request):
-    '''
-    payload
-    targetpath?
-    '''
-    #this is handled by a different session then the user's browser
+    #this is handled by a different session then the user's browser, hence csrf exempt
     if not request.POST:
         return HttpResponseBadRequest()
     from uploadify_s3.backends.djangoview import unsign

@@ -5,13 +5,9 @@ from urllib import urlencode
 
 from django.middleware.csrf import get_token
 from django.core.urlresolvers import reverse
-try:
-    from django.core.signing import Signer
-except ImportError:
-    from utils import Signer
-    signer = Signer()
-else:
-    signer = Signer()
+
+from utils import Signer
+signer = Signer()
 
 def sign(value):
     return signer.sign(value)
