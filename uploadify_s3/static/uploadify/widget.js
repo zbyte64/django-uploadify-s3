@@ -35,21 +35,42 @@ function make_file_fields_dynamic($, options_url) {
             
             function on_upload_success(file, data, response) {
                 delete form.data('pending_uploads')[this.id];
-                if (data) {
-                    $('#'+this.id).data('path', data); //store the actuall path
+                if (file.targetpath) {
+                    $('#'+this.id).data('path', file.targetpath);
                 } else {
-                    $('#'+this.id).data('path', upload_to + file.name);
+                    $('#'+this.id).data('path', data);
                 }
                 if ($.isEmptyObject(form.data('pending_uploads')) && form.data('submit')) {
                     form.submit();
                 }
             }
             
-            function on_select() {
+            function on_select(file) {
                 if (!form.data('uploadify_init')) { //hack around
                     init_form()
                 }
                 form.data('pending_uploads')[this.id] = true;
+                
+                //determine the target path and update post data if our backend requires
+                var swfuploadify = window['uploadify_' + this.id];
+                if (swfuploadify.settings.determineName) {
+                    jQuery.ajax({
+                        type    : 'POST',
+                        async  : false,
+                        dataType: 'json',
+                        url     : swfuploadify.settings.determineName,
+                        data    : {filename: file.name,
+                                   upload_to: upload_to},
+                        success : function(data) {
+                            for (key in data) {
+                                swfuploadify.addFileParam(file.id, key, data[key]);
+                            }
+                            file.targetpath = data['targetpath'];
+                        }
+                    });
+                } else {
+                    //swfuploadify.addFileParam(file.id, 'targetname', file.name);
+                }
             }
             
             function on_upload_error(file,errorCode,errorMsg,errorString, queue) {
@@ -62,6 +83,7 @@ function make_file_fields_dynamic($, options_url) {
             
             options['onUploadSuccess'] = on_upload_success;
             options['onSelect'] = on_select;
+            //options['onUploadStart'] = on_upload_start;
             options['onUploadError'] = on_upload_error;
             options['onUploadCancel'] = on_upload_cancel;
             options['onSWFReady'] = init_form; //this may not work

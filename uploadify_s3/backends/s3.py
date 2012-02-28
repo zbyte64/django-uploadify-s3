@@ -17,7 +17,7 @@ BUCKET_NAME         = getattr(settings, 'AWS_BUCKET_NAME', None)
 SECURE_URLS         = getattr(settings, 'AWS_S3_SECURE_URLS', False)
 BUCKET_URL          = getattr(settings, 'AWS_BUCKET_URL', ('https://' if SECURE_URLS else 'http://') + BUCKET_NAME + '.s3.amazonaws.com')
 DEFAULT_ACL         = getattr(settings, 'AWS_DEFAULT_ACL', 'public-read')
-DEFAULT_KEY_PATTERN = getattr(settings, 'AWS_DEFAULT_KEY_PATTERN', '${filename}')
+DEFAULT_KEY_PATTERN = getattr(settings, 'AWS_DEFAULT_KEY_PATTERN', '${targetname}')
 DEFAULT_FORM_TIME   = getattr(settings, 'AWS_DEFAULT_FORM_LIFETIME', 36000) # 10 HOURS
 
 
@@ -38,7 +38,7 @@ class S3UploadifyBackend(BaseUploadifyBackend):
             key = os.path.join(self.options['folder'], DEFAULT_KEY_PATTERN)
         else:
             key = DEFAULT_KEY_PATTERN
-        _set_default_if_none(self.post_data, 'key', key)
+        #_set_default_if_none(self.post_data, 'key', key) #this is set by update_post_params
         _set_default_if_none(self.post_data, 'acl', DEFAULT_ACL)
         
         try:
@@ -71,6 +71,8 @@ class S3UploadifyBackend(BaseUploadifyBackend):
         #make s3 happy with uploadify
         #conditions.append(['starts-with', '$folder', '']) #no longer passed by uploadify
         conditions.append(['starts-with', '$filename', ''])
+        conditions.append(['starts-with', '$targetname', '']) #variable introduced by this package
+        conditions.append(['starts-with', '$targetpath', self.options['folder']])
         #conditions.append({'success_action_status': '200'})
         
         #real conditions
@@ -83,6 +85,10 @@ class S3UploadifyBackend(BaseUploadifyBackend):
         policy = {'expiration': expiration_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
                   'conditions': self.conditions,}
         return json.dumps(policy)
+    
+    def update_post_params(self, params):
+        #instruct s3 that our key is the targetpath
+        params['key'] = params['targetpath']
 
 def _uri_encode(str):
     try:

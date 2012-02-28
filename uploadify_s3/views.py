@@ -1,6 +1,7 @@
 from django.http import HttpResponse, HttpResponseBadRequest
 from django.core.files.storage import default_storage
 from django.views.decorators.csrf import csrf_exempt
+from django.utils import simplejson as json
 
 from uploadify_s3.backends import get_uploadify_backend
 
@@ -8,32 +9,41 @@ from urlparse import parse_qsl
 import os
 
 #TODO staff only? csrf?
+#TODO make a csrf required view
 def uploadify_options_view(request):
     uploadify_options = {}
     if 'upload_to' in request.GET:
         uploadify_options['folder'] = request.GET['upload_to']
     backend = get_uploadify_backend()
-    json = backend(request=request, 
+    data = backend(request=request, 
                    uploadify_options=uploadify_options).get_options_json()
-    return HttpResponse(json)
+    return HttpResponse(data)
 
 @csrf_exempt
 def upload_file(request):
+    '''
+    payload
+    targetpath?
+    '''
     #this is handled by a different session then the user's browser
     if not request.POST:
         return HttpResponseBadRequest()
     from uploadify_s3.backends.djangoview import unsign
     data = dict(parse_qsl(unsign(request.POST['payload'])))
     assert data['request_time'] #TODO respect some expiration
-    path = os.path.join(data['upload_to'], request.FILES['Filedata'].name)
+    path = request.POST.get('targetpath', os.path.join(data['upload_to'], request.POST['Filename']))
     file_path = default_storage.save(path, request.FILES['Filedata']) #TODO how to tell the storage engine not to rename?
     return HttpResponse(file_path)
 
 @csrf_exempt
-def check_exists(request):
+def determine_name(request):
     if not request.POST:
         return HttpResponseBadRequest()
-    #if default_storage.exists(request.POST['filename']):
-    #    return HttpResponse('1')
-    return HttpResponse('0')
+    desired_path = os.path.join(request.POST['upload_to'], request.POST['filename'])
+    path = default_storage.get_available_name(desired_path)
+    data = {'targetpath':path,
+            'targetname':os.path.split(path)[-1],}
+    backend = get_uploadify_backend()
+    backend(request=request, uploadify_options={'folder':request.POST['upload_to']}).update_post_params(data)
+    return HttpResponse(json.dumps(data))
 

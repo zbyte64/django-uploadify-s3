@@ -2,8 +2,7 @@ from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.core.urlresolvers import reverse
 
-#TODO import from django
-import json
+from django.utils import simplejson as json
 
 from common import UPLOADIFY_OPTIONS, UPLOADIFY_METHODS, DEFAULT_CANCELIMG, DEFAULT_UPLOADER, BUTTON_TEXT
 
@@ -21,19 +20,26 @@ class BaseUploadifyBackend(object):
         _set_default_if_none(self.options, 'uploader', self.get_uploader())
         _set_default_if_none(self.options, 'buttonText', BUTTON_TEXT)
         _set_default_if_none(self.options, 'checkExisting', self.get_check_existing())
+        _set_default_if_none(self.options, 'determineName', self.get_determine_name())
         
         self.post_data = post_data
         self.build_post_data()
     
     def get_check_existing(self):
-        return reverse('uploadify-check-exists')
+        return False
+    
+    def get_determine_name(self):
+        return reverse('uploadify-determine-name')
     
     def get_uploader(self):
         pass
     
     def build_post_data(self):
         pass
-        
+    
+    def update_post_params(self, params):
+        pass
+    
     def get_options_json(self):
         self.options['postData'] = self.post_data
         subs = []
