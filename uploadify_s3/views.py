@@ -8,12 +8,12 @@ from uploadify_s3.backends import get_uploadify_backend
 from urlparse import parse_qsl
 import os
 
-#TODO staff only? csrf?
-#TODO make a csrf required view
 def uploadify_options_view(request):
+    if not request.POST:
+        return HttpResponseBadRequest()
     uploadify_options = {}
-    if 'upload_to' in request.GET:
-        uploadify_options['folder'] = request.GET['upload_to']
+    if 'upload_to' in request.POST:
+        uploadify_options['folder'] = request.POST['upload_to']
     backend = get_uploadify_backend()
     data = backend(request=request, 
                    uploadify_options=uploadify_options).get_options_json()
@@ -35,7 +35,6 @@ def upload_file(request):
     file_path = default_storage.save(path, request.FILES['Filedata']) #TODO how to tell the storage engine not to rename?
     return HttpResponse(file_path)
 
-@csrf_exempt
 def determine_name(request):
     if not request.POST:
         return HttpResponseBadRequest()
